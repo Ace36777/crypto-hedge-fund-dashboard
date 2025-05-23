@@ -2,9 +2,36 @@ import streamlit as st
 import pandas as pd
 import requests
 from datetime import datetime
+from streamlit_autorefresh import st_autorefresh
+import os
 
 st.set_page_config(page_title="Crypto Hedge Fund Dashboard", layout="wide")
+st_autorefresh(interval=60000, key="refresh")
 st.title("🧠 Crypto Hedge Fund Strategy Dashboard")
+
+# --- File Uploads ---
+st.sidebar.header("📂 Upload Analyst Reports")
+pdf = st.sidebar.file_uploader("Upload PDF Report", type=["pdf"])
+if pdf:
+    st.sidebar.success(f"Uploaded: {pdf.name}")
+
+# --- Simulated Capital Injection Log (CSV Placeholder) ---
+log_file = "capital_injection_log.csv"
+if not os.path.exists(log_file):
+    pd.DataFrame({"Date": [], "Amount (GBP)": []}).to_csv(log_file, index=False)
+
+st.sidebar.subheader("📥 Capital Injections")
+with st.sidebar.form("Add Injection"):
+    date = st.date_input("Injection Date")
+    amount = st.number_input("Amount (GBP)", min_value=0.0)
+    submitted = st.form_submit_button("Log Injection")
+    if submitted:
+        df_log = pd.read_csv(log_file)
+        df_log = df_log.append({"Date": date, "Amount (GBP)": amount}, ignore_index=True)
+        df_log.to_csv(log_file, index=False)
+        st.success("Injection logged successfully")
+
+injection_data = pd.read_csv(log_file)
 
 # --- Portfolio Setup ---
 st.subheader("📊 Current Holdings")
@@ -15,14 +42,14 @@ portfolio_data = {
 }
 df = pd.DataFrame(portfolio_data)
 
-# --- Batch Fetch Prices ---
+# --- Fetch Prices ---
 all_ids = ",".join(df["CoinGecko ID"].tolist())
 url = f"https://api.coingecko.com/api/v3/simple/price?ids={all_ids}&vs_currencies=gbp"
 response = requests.get(url)
 prices = response.json() if response.status_code == 200 else {}
 df["Price (GBP)"] = df["CoinGecko ID"].apply(lambda x: prices.get(x, {}).get("gbp", 0))
 
-# --- Manual Override for Missing Prices ---
+# --- Manual Price Overrides ---
 for i in df.index:
     if df.loc[i, "Price (GBP)"] == 0:
         manual = st.number_input(f"Manual price for {df.loc[i, 'Token']} (GBP):", min_value=0.0, step=0.0001, key=df.loc[i, 'Token'])
@@ -31,8 +58,16 @@ for i in df.index:
 df["Value (GBP)"] = df["Units"] * df["Price (GBP)"]
 total_value = df["Value (GBP)"].sum()
 
+# --- Sniper Zone Tracker ---
+sniper_thresholds = {"PAAL": 0.11, "RIO": 0.22, "PROPS": 0.023, "NAKA": 0.29, "DEVVE": 0.38, "PROPC": 0.42}
+sniper_df = df[df["Token"].isin(sniper_thresholds.keys())].copy()
+sniper_df["In Buy Zone"] = sniper_df.apply(lambda x: "🟢" if x["Price (GBP)"] <= sniper_thresholds[x["Token"]] else "🔴", axis=1)
+
 st.dataframe(df[["Token", "Units", "Price (GBP)", "Value (GBP)"]], use_container_width=True)
 st.metric("💷 Total Portfolio Value", f"£{total_value:,.2f}")
+
+st.subheader("🎯 Sniper Buy Zone Tracker")
+st.dataframe(sniper_df[["Token", "Price (GBP)", "In Buy Zone"]], use_container_width=True)
 
 # --- KPI Summary ---
 st.header("📈 Strategy KPI Summary")
@@ -41,88 +76,36 @@ st.metric("Vault Progress", "0.0641 BTC / 1 BTC", "6.41%")
 st.metric("USDT Available", f"£{usdt_available:,.2f}")
 st.metric("Harvest Realised (May)", "£257.60")
 
-# --- BTC Vault Tracker ---
-st.subheader("🏦 BTC Vault Tracker")
-btc_target = 1.0
-btc_current = df[df["Token"] == "BTC"]["Units"].values[0]
-btc_progress = (btc_current / btc_target) * 100
-st.progress(btc_progress / 100, text=f"{btc_progress:.2f}% of 1 BTC Goal")
+# --- Injection Timeline ---
+st.subheader("📆 Capital Injection History")
+st.dataframe(injection_data.tail(10))
 
-# --- Risk Grading System ---
-st.subheader("📉 Weekly Risk Grades")
-risk_data = {
-    "Token": df["Token"].tolist(),
-    "Volatility": [3, 2, 2, 3, 3, 4, 2, 1, 1],
-    "Narrative": [5, 4, 3, 3, 5, 3, 3, 1, 3],
-    "Liquidity": [3, 2, 2, 3, 3, 2, 2, 5, 5],
-    "Harvest Readiness": [2, 3, 2, 3, 2, 2, 4, 1, 1]
-}
-risk_df = pd.DataFrame(risk_data)
-risk_df["Avg Score"] = risk_df[["Volatility", "Narrative", "Liquidity", "Harvest Readiness"]].mean(axis=1)
-risk_df["Risk Level"] = pd.cut(risk_df["Avg Score"], bins=[0,2.5,2.9,3.4,5], labels=["Low", "Med-Low", "Medium", "High"])
-st.dataframe(risk_df, use_container_width=True)
+# --- Staff Role Panel Preview: Accumulation Strategy & Simulation ---
+st.header("📊 Accumulation Strategy & Simulation")
+st.markdown("This section mirrors compounder simulations from analyst reports")
+compounders = ["RIO", "PAAL", "PROPS", "NAKA", "DEVVE", "ANYONE", "PROPC"]
 
-# --- Compounder Simulation ---
-st.subheader("📈 Compounder Simulation")
-selected_token = st.selectbox("Choose a token to simulate harvest", df["Token"].unique())
-token_row = df[df["Token"] == selected_token]
-if not token_row.empty:
-    current_price = token_row["Price (GBP)"].values[0]
-    units_held = token_row["Units"].values[0]
-    harvest_prices = [current_price * m for m in [1.25, 1.5, 1.75]]
-    simulation = pd.DataFrame({
-        "Harvest Price (GBP)": harvest_prices,
-        "Value at Harvest": [p * units_held for p in harvest_prices],
-        "% Gain": [(p - current_price)/current_price * 100 for p in harvest_prices]
-    })
-    st.dataframe(simulation, use_container_width=True)
+for token in compounders:
+    current_row = df[df["Token"] == token]
+    if not current_row.empty:
+        st.subheader(f"📌 {token}: Simulation")
+        current_price = current_row["Price (GBP)"].values[0]
+        units = current_row["Units"].values[0]
+        target_units = {
+            "RIO": 10000, "PAAL": 20000, "PROPS": 80000,
+            "NAKA": 6000, "DEVVE": 5000, "ANYONE": 5000, "PROPC": 2000
+        }.get(token, 0)
+        remaining = target_units - units
+        harvest_prices = [current_price * (1 + pct/100) for pct in [25, 50, 75]]
+        value_at_targets = [harvest * target_units for harvest in harvest_prices]
 
-# --- Vault Siphon Logic ---
-st.subheader("🔁 Vault Siphon Proposal")
-if usdt_available > 1000:
-    st.success(f"You have £{usdt_available:.2f} in USDT. You may siphon £50 into BTC as a vault asset.")
-else:
-    st.info("USDT balance is below £1,000. No siphon suggested.")
-
-# --- Staff Analyst Panels ---
-st.header("🧠 Analyst Role Panels")
-with st.expander("📡 Signal Analyst"):
-    st.write("- BTC Dominance Chart")
-    st.write("- ETH/BTC Ratio Tracker")
-    st.write("- Altseason Signal Gauge")
-
-with st.expander("📊 Weekly Report Assistant"):
-    st.write("- Weekly ROI (bar chart: GBP vs BTC)")
-    st.write("- Download latest PDF report")
-
-with st.expander("🔄 Rotation Optimizer"):
-    st.write("- Current over/underweighted tokens")
-    st.write("- Suggested rebalances with %")
-
-with st.expander("🧾 Harvest Trigger Assistant"):
-    st.write("- Realized gain table")
-    st.write("- Warning if harvest zone hit")
-
-with st.expander("🌐 Market Sentiment Tracker"):
-    st.write("- Social Sentiment Heatmap")
-    st.write("- Narrative Rotation Score")
-
-with st.expander("📋 Performance Auditor"):
-    st.write("- TWR & MWR Calculations")
-    st.write("- BTC-equivalent Chart vs Benchmark")
-
-# --- Tactical Calendar ---
-st.subheader("📅 Weekly Tactical Calendar")
-calendar = {
-    "Monday": "🔍 Review market news and BTC.D",
-    "Tuesday": "💰 Deploy sniper bids (e.g., PROPC, RIO)",
-    "Wednesday": "📊 Check midweek RSI signals",
-    "Thursday": "📈 Prepare weekend accumulation plays",
-    "Friday": "🧠 Re-evaluate narratives and social buzz",
-    "Saturday": "⏳ Monitor BTC volatility & USDT triggers",
-    "Sunday": "🧾 Run weekly reports + rebalance alerts"
-}
-st.table(pd.DataFrame(list(calendar.items()), columns=["Day", "Action Plan"]))
+        sim_df = pd.DataFrame({
+            "Scenario": ["+25%", "+50%", "+75%"],
+            "Harvest Price": harvest_prices,
+            "Value @ Target Units": value_at_targets
+        })
+        st.dataframe(sim_df)
 
 # --- Footer ---
-st.caption("Automated dashboard powered by Streamlit + CoinGecko API + your BTC pricing data")
+st.caption("Fully upgraded dashboard with simulation, sniper tracking, staff KPIs and reporting tools")
+
