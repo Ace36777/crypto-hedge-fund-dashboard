@@ -38,7 +38,7 @@ st.subheader("📊 Current Holdings")
 portfolio_data = {
     "Token": ["PAAL", "RIO", "PROPS", "NAKA", "ANYONE", "DEVVE", "PROPC", "USDT", "BTC"],
     "Units": [11400, 5003.06, 40840.88, 3182.46, 2200.78, 2003.85, 740, 1277.90, 0.0006414],
-    "CoinGecko ID": ["paal-ai", "realio-network", "propbase", "nakamoto-games", "anyone", "devve", "propchain", "tether", "bitcoin"]
+    "CoinGecko ID": ["paal-ai", "realio-network", "propbase", "nakamoto-games", "anyone-protocol", "devve", "propchain", "tether", "bitcoin"]
 }
 df = pd.DataFrame(portfolio_data)
 
