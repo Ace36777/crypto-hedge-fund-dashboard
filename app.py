@@ -20,7 +20,7 @@ st.subheader("📊 Current Holdings")
 portfolio_data = {
     "Token": ["PAAL", "RIO", "PROPS", "NAKA", "ANYONE", "DEVVE", "PROPC", "USDT", "BTC"],
     "Units": [11400, 5003.06, 40840.88, 3182.46, 2200.78, 2003.85, 740, 1277.90, 0.0006414],
-    "CoinGecko ID": ["paal-ai", "realio-network", "props", "nakamoto-games", "anyone", "devve", "propc", "tether", "bitcoin"]
+    "CoinGecko ID": ["paal-ai", "realio-network", "props-token", "nakamoto-games", "anyone-ai", "devve", "propcraft", "tether", "bitcoin"]
 }
 df = pd.DataFrame(portfolio_data)
 
@@ -32,7 +32,7 @@ total_value = df["Value (GBP)"].sum()
 st.dataframe(df[["Token", "Units", "Price (GBP)", "Value (GBP)"]], use_container_width=True)
 st.metric("💷 Total Portfolio Value", f"£{total_value:,.2f}")
 
-# --- Vault Tracker ---
+# --- BTC Vault Tracker ---
 st.subheader("🏦 BTC Vault Tracker")
 btc_target = 1.0
 btc_current = df[df["Token"] == "BTC"]["Units"].values[0]
