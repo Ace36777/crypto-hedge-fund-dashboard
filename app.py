@@ -3,16 +3,22 @@ import pandas as pd
 import requests
 from datetime import datetime
 
-# Page config
 st.set_page_config(page_title="Crypto Hedge Fund Dashboard", layout="wide")
 st.title("🧠 Crypto Hedge Fund Strategy Dashboard")
+
+# --- KPI Summary ---
+st.header("📈 Strategy KPI Summary")
+st.metric("Vault Progress", "0.0641 BTC / 1 BTC", "6.41%")
+st.metric("USDT Available", "£1,277.90")
+st.metric("Harvest Realised (May)", "£257.60")
+st.metric("Total Portfolio Value", "~£7,600+ (Live)")
 
 # --- Portfolio Setup ---
 st.subheader("📊 Current Holdings")
 portfolio_data = {
     "Token": ["PAAL", "RIO", "PROPS", "NAKA", "ANYONE", "DEVVE", "PROPC", "USDT", "BTC"],
     "Units": [11400, 5003.06, 40840.88, 3182.46, 2200.78, 2003.85, 740, 1277.90, 0.0006414],
-    "CoinGecko ID": ["paal-ai", "realio-network", "propbase", "nakamoto-games", "anyone-protocol", "devve", "propchain", "tether", "bitcoin"]
+    "CoinGecko ID": ["paal-ai", "realio-network", "propbase", "nakamoto-games", "anyone", "devve", "propchain", "tether", "bitcoin"]
 }
 df = pd.DataFrame(portfolio_data)
 
@@ -66,13 +72,38 @@ if not token_row.empty:
 
 # --- Vault Siphon Logic ---
 st.subheader("🔁 Vault Siphon Proposal")
-vault_suggested = False
 usdt_value = df[df["Token"] == "USDT"]["Value (GBP)"].values[0]
 if usdt_value > 1000:
     st.success(f"You have £{usdt_value:.2f} in USDT. You may siphon £50 into BTC as a vault asset.")
-    vault_suggested = True
 else:
     st.info("USDT balance is below £1,000. No siphon suggested.")
+
+# --- Staff Analyst Panels ---
+st.header("🧠 Analyst Role Panels")
+with st.expander("📡 Signal Analyst"):
+    st.write("- Altseason metrics")
+    st.write("- BTC.D trend")
+    st.write("- Breakout alerts")
+
+with st.expander("📊 Weekly Report Assistant"):
+    st.write("- Weekly PDF links")
+    st.write("- Portfolio ROI summary")
+
+with st.expander("🔄 Rotation Optimizer"):
+    st.write("- Current overweight/underweight tokens")
+    st.write("- Suggested rebalances")
+
+with st.expander("🧾 Harvest Trigger Assistant"):
+    st.write("- Exit logs")
+    st.write("- Realized profit table")
+
+with st.expander("🌐 Market Sentiment Tracker"):
+    st.write("- BTC/ETH mood summary")
+    st.write("- Trending narratives")
+
+with st.expander("📋 Performance Auditor"):
+    st.write("- BTC vault completion %")
+    st.write("- TWR / MWR comparisons")
 
 # --- Tactical Calendar ---
 st.subheader("📅 Weekly Tactical Calendar")
