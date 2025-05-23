@@ -27,7 +27,7 @@ with st.sidebar.form("Add Injection"):
     submitted = st.form_submit_button("Log Injection")
     if submitted:
         df_log = pd.read_csv(log_file)
-        df_log = df_log.append({"Date": date, "Amount (GBP)": amount}, ignore_index=True)
+        df_log = pd.concat([df_log, pd.DataFrame([{"Date": date, "Amount (GBP)": amount}])], ignore_index=True)
         df_log.to_csv(log_file, index=False)
         st.success("Injection logged successfully")
 
@@ -85,21 +85,29 @@ st.header("📊 Accumulation Strategy & Simulation")
 st.markdown("This section mirrors compounder simulations from analyst reports")
 compounders = ["RIO", "PAAL", "PROPS", "NAKA", "DEVVE", "ANYONE", "PROPC"]
 
+# Editable Target Units
+st.sidebar.subheader("🎯 Set Target Units")
+target_units_input = {}
+for token in compounders:
+    default_target = {
+        "RIO": 10000, "PAAL": 20000, "PROPS": 80000,
+        "NAKA": 6000, "DEVVE": 5000, "ANYONE": 5000, "PROPC": 2000
+    }.get(token, 0)
+    target_units_input[token] = st.sidebar.number_input(f"Target Units for {token}", value=default_target, min_value=0, step=1)
+
 for token in compounders:
     current_row = df[df["Token"] == token]
     if not current_row.empty:
         st.subheader(f"📌 {token}: Simulation")
         current_price = current_row["Price (GBP)"].values[0]
         units = current_row["Units"].values[0]
-        target_units = {
-            "RIO": 10000, "PAAL": 20000, "PROPS": 80000,
-            "NAKA": 6000, "DEVVE": 5000, "ANYONE": 5000, "PROPC": 2000
-        }.get(token, 0)
+        target_units = target_units_input[token]
         remaining = target_units - units
         harvest_prices = [current_price * (1 + pct/100) for pct in [25, 50, 75]]
         value_at_targets = [harvest * target_units for harvest in harvest_prices]
 
         sim_df = pd.DataFrame({
+            "Live Price": [current_price] * 3,
             "Scenario": ["+25%", "+50%", "+75%"],
             "Harvest Price": harvest_prices,
             "Value @ Target Units": value_at_targets
@@ -108,4 +116,3 @@ for token in compounders:
 
 # --- Footer ---
 st.caption("Fully upgraded dashboard with simulation, sniper tracking, staff KPIs and reporting tools")
-
