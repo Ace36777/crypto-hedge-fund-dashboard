@@ -6,13 +6,6 @@ from datetime import datetime
 st.set_page_config(page_title="Crypto Hedge Fund Dashboard", layout="wide")
 st.title("🧠 Crypto Hedge Fund Strategy Dashboard")
 
-# --- KPI Summary ---
-st.header("📈 Strategy KPI Summary")
-st.metric("Vault Progress", "0.0641 BTC / 1 BTC", "6.41%")
-st.metric("USDT Available", "£1,277.90")
-st.metric("Harvest Realised (May)", "£257.60")
-st.metric("Total Portfolio Value", "~£7,600+ (Live)")
-
 # --- Portfolio Setup ---
 st.subheader("📊 Current Holdings")
 portfolio_data = {
@@ -28,11 +21,25 @@ url = f"https://api.coingecko.com/api/v3/simple/price?ids={all_ids}&vs_currencie
 response = requests.get(url)
 prices = response.json() if response.status_code == 200 else {}
 df["Price (GBP)"] = df["CoinGecko ID"].apply(lambda x: prices.get(x, {}).get("gbp", 0))
+
+# --- Manual Override for Missing Prices ---
+for i in df.index:
+    if df.loc[i, "Price (GBP)"] == 0:
+        manual = st.number_input(f"Manual price for {df.loc[i, 'Token']} (GBP):", min_value=0.0, step=0.0001, key=df.loc[i, 'Token'])
+        df.loc[i, "Price (GBP)"] = manual
+
 df["Value (GBP)"] = df["Units"] * df["Price (GBP)"]
 total_value = df["Value (GBP)"].sum()
 
 st.dataframe(df[["Token", "Units", "Price (GBP)", "Value (GBP)"]], use_container_width=True)
 st.metric("💷 Total Portfolio Value", f"£{total_value:,.2f}")
+
+# --- KPI Summary ---
+st.header("📈 Strategy KPI Summary")
+usdt_available = df[df["Token"] == "USDT"]["Value (GBP)"].values[0]
+st.metric("Vault Progress", "0.0641 BTC / 1 BTC", "6.41%")
+st.metric("USDT Available", f"£{usdt_available:,.2f}")
+st.metric("Harvest Realised (May)", "£257.60")
 
 # --- BTC Vault Tracker ---
 st.subheader("🏦 BTC Vault Tracker")
@@ -72,38 +79,37 @@ if not token_row.empty:
 
 # --- Vault Siphon Logic ---
 st.subheader("🔁 Vault Siphon Proposal")
-usdt_value = df[df["Token"] == "USDT"]["Value (GBP)"].values[0]
-if usdt_value > 1000:
-    st.success(f"You have £{usdt_value:.2f} in USDT. You may siphon £50 into BTC as a vault asset.")
+if usdt_available > 1000:
+    st.success(f"You have £{usdt_available:.2f} in USDT. You may siphon £50 into BTC as a vault asset.")
 else:
     st.info("USDT balance is below £1,000. No siphon suggested.")
 
 # --- Staff Analyst Panels ---
 st.header("🧠 Analyst Role Panels")
 with st.expander("📡 Signal Analyst"):
-    st.write("- Altseason metrics")
-    st.write("- BTC.D trend")
-    st.write("- Breakout alerts")
+    st.write("- BTC Dominance Chart")
+    st.write("- ETH/BTC Ratio Tracker")
+    st.write("- Altseason Signal Gauge")
 
 with st.expander("📊 Weekly Report Assistant"):
-    st.write("- Weekly PDF links")
-    st.write("- Portfolio ROI summary")
+    st.write("- Weekly ROI (bar chart: GBP vs BTC)")
+    st.write("- Download latest PDF report")
 
 with st.expander("🔄 Rotation Optimizer"):
-    st.write("- Current overweight/underweight tokens")
-    st.write("- Suggested rebalances")
+    st.write("- Current over/underweighted tokens")
+    st.write("- Suggested rebalances with %")
 
 with st.expander("🧾 Harvest Trigger Assistant"):
-    st.write("- Exit logs")
-    st.write("- Realized profit table")
+    st.write("- Realized gain table")
+    st.write("- Warning if harvest zone hit")
 
 with st.expander("🌐 Market Sentiment Tracker"):
-    st.write("- BTC/ETH mood summary")
-    st.write("- Trending narratives")
+    st.write("- Social Sentiment Heatmap")
+    st.write("- Narrative Rotation Score")
 
 with st.expander("📋 Performance Auditor"):
-    st.write("- BTC vault completion %")
-    st.write("- TWR / MWR comparisons")
+    st.write("- TWR & MWR Calculations")
+    st.write("- BTC-equivalent Chart vs Benchmark")
 
 # --- Tactical Calendar ---
 st.subheader("📅 Weekly Tactical Calendar")
