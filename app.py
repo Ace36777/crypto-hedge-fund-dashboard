@@ -7,14 +7,6 @@ from datetime import datetime
 st.set_page_config(page_title="Crypto Hedge Fund Dashboard", layout="wide")
 st.title("🧠 Crypto Hedge Fund Strategy Dashboard")
 
-# --- Live Price Fetcher ---
-def fetch_price(token_id):
-    url = f"https://api.coingecko.com/api/v3/simple/price?ids={token_id}&vs_currencies=gbp"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json().get(token_id, {}).get("gbp", 0.0)
-    return 0.0
-
 # --- Portfolio Setup ---
 st.subheader("📊 Current Holdings")
 portfolio_data = {
@@ -24,8 +16,12 @@ portfolio_data = {
 }
 df = pd.DataFrame(portfolio_data)
 
-# Fetch live prices and calculate value
-df["Price (GBP)"] = df["CoinGecko ID"].apply(fetch_price)
+# --- Batch Fetch Prices ---
+all_ids = ",".join(df["CoinGecko ID"].tolist())
+url = f"https://api.coingecko.com/api/v3/simple/price?ids={all_ids}&vs_currencies=gbp"
+response = requests.get(url)
+prices = response.json() if response.status_code == 200 else {}
+df["Price (GBP)"] = df["CoinGecko ID"].apply(lambda x: prices.get(x, {}).get("gbp", 0))
 df["Value (GBP)"] = df["Units"] * df["Price (GBP)"]
 total_value = df["Value (GBP)"].sum()
 
@@ -39,7 +35,7 @@ btc_current = df[df["Token"] == "BTC"]["Units"].values[0]
 btc_progress = (btc_current / btc_target) * 100
 st.progress(btc_progress / 100, text=f"{btc_progress:.2f}% of 1 BTC Goal")
 
-# --- Risk Grading System (manual entry placeholder) ---
+# --- Risk Grading System ---
 st.subheader("📉 Weekly Risk Grades")
 risk_data = {
     "Token": df["Token"].tolist(),
