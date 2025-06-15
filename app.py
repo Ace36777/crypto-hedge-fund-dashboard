@@ -1,9 +1,6 @@
-import streamlit as st
-import pandas as pd
 import requests
-from datetime import datetime
-from streamlit_autorefresh import st_autorefresh
-import os
+import pandas as pd
+import streamlit as st
 
 st.set_page_config(page_title="Crypto Hedge Fund Dashboard", layout="wide")
 st_autorefresh(interval=60000, key="refresh")
